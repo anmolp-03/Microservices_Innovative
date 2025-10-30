@@ -100,9 +100,14 @@ Set-KongRoute -ServiceName "bill-service" -RouteName "bill-route" -Paths "/bills
 Set-KongService -Name "review-service" -Url "http://review:4000"
 Set-KongRoute -ServiceName "review-service" -RouteName "review-route" -Paths "/reviews"
 
+# Configure Event Streaming Service
+Set-KongService -Name "event-streaming-service" -Url "http://event-streaming:3100"
+Set-KongRoute -ServiceName "event-streaming-service" -RouteName "event-streaming-route" -Paths "/logs"
+
 Write-Host "`nKong configuration complete!" -ForegroundColor Green
 Write-Host "Services configured:" -ForegroundColor Cyan
 Write-Host "  Menu Service:   http://localhost:18082/menu" -ForegroundColor White
 Write-Host "  Order Service:  http://localhost:18082/orders" -ForegroundColor White
 Write-Host "  Bill Service:   http://localhost:18082/bills" -ForegroundColor White
 Write-Host "  Review Service: http://localhost:18082/reviews" -ForegroundColor White
+Write-Host "  Event Streaming: http://localhost:18082/logs" -ForegroundColor White

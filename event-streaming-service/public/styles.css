@@ -1,0 +1,125 @@
+:root {
+    --menu-color: #4caf50;
+    --order-color: #2196f3;
+    --bill-color: #f44336;
+    --review-color: #ff9800;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+    line-height: 1.6;
+    background-color: #f5f5f5;
+}
+
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+header {
+    background-color: #fff;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    margin-bottom: 20px;
+}
+
+h1 {
+    margin-bottom: 15px;
+    color: #333;
+}
+
+.filters {
+    display: flex;
+    gap: 20px;
+    margin-bottom: 15px;
+}
+
+.filters label {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    cursor: pointer;
+}
+
+#clearLogs {
+    padding: 8px 16px;
+    background-color: #dc3545;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+#clearLogs:hover {
+    background-color: #c82333;
+}
+
+#logContainer {
+    background-color: #fff;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    height: calc(100vh - 200px);
+    overflow-y: auto;
+}
+
+.log-entry {
+    padding: 10px;
+    margin-bottom: 10px;
+    border-radius: 4px;
+    font-family: monospace;
+    display: flex;
+    gap: 10px;
+}
+
+.log-entry.menu { border-left: 4px solid var(--menu-color); }
+.log-entry.order { border-left: 4px solid var(--order-color); }
+.log-entry.bill { border-left: 4px solid var(--bill-color); }
+.log-entry.review { border-left: 4px solid var(--review-color); }
+
+.log-timestamp {
+    color: #666;
+    min-width: 200px;
+}
+
+.log-service {
+    font-weight: bold;
+    min-width: 100px;
+}
+
+.log-service.menu { color: var(--menu-color); }
+.log-service.order { color: var(--order-color); }
+.log-service.bill { color: var(--bill-color); }
+.log-service.review { color: var(--review-color); }
+
+.log-message {
+    flex: 1;
+    word-break: break-all;
+}
+
+/* Scrollbar styling */
+#logContainer::-webkit-scrollbar {
+    width: 8px;
+}
+
+#logContainer::-webkit-scrollbar-track {
+    background: #f1f1f1;
+}
+
+#logContainer::-webkit-scrollbar-thumb {
+    background: #888;
+    border-radius: 4px;
+}
+
+#logContainer::-webkit-scrollbar-thumb:hover {
+    background: #555;
+}

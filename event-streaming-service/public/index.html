@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Event Stream Viewer</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Service Logs</h1>
+            <div class="filters">
+                <label>
+                    <input type="checkbox" class="service-filter" data-service="menu" checked> Menu Service
+                </label>
+                <label>
+                    <input type="checkbox" class="service-filter" data-service="order" checked> Order Service
+                </label>
+                <label>
+                    <input type="checkbox" class="service-filter" data-service="bill" checked> Bill Service
+                </label>
+                <label>
+                    <input type="checkbox" class="service-filter" data-service="review" checked> Review Service
+                </label>
+            </div>
+            <button id="clearLogs">Clear Logs</button>
+        </header>
+        <main>
+            <div id="logContainer"></div>
+        </main>
+    </div>
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
