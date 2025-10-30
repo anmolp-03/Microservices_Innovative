@@ -94,11 +94,6 @@ The system consists of the following core microservices:
 - **RabbitMQ**: Message broker for service communication
 - **WebSocket**: Real-time event streaming
 
-### Frontend
-- HTML5, CSS3, JavaScript
-- Real-time log visualization
-- Responsive design
-
 ### DevOps & Infrastructure
 - **Docker**: Containerization
 - **Kubernetes**: Container orchestration
