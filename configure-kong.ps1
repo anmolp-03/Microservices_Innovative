@@ -100,9 +100,39 @@ Set-KongRoute -ServiceName "bill-service" -RouteName "bill-route" -Paths "/bills
 Set-KongService -Name "review-service" -Url "http://review:4000"
 Set-KongRoute -ServiceName "review-service" -RouteName "review-route" -Paths "/reviews"
 
-# Configure Event Streaming Service
+# Configure Event Streaming Service with WebSocket Support
+Write-Host "Setting up event-streaming service with WebSocket support..." -ForegroundColor Cyan
+
+# First, create/update the service
 Set-KongService -Name "event-streaming-service" -Url "http://event-streaming:3100"
-Set-KongRoute -ServiceName "event-streaming-service" -RouteName "event-streaming-route" -Paths "/logs"
+
+# Then set up the route with WebSocket support
+$routeName = "event-streaming-route"
+$serviceId = (Invoke-RestMethod -Uri "$KONG_ADMIN_URL/services/event-streaming-service").id
+
+# For WebSocket routes, we need slightly different configuration
+$body = @{
+    protocols = @("http", "https", "ws", "wss")
+    paths = @("/logs", "/logs/socket.io")
+    strip_path = $false
+} | ConvertTo-Json
+
+try {
+    $existingRoute = Invoke-RestMethod -Uri "$KONG_ADMIN_URL/routes/$routeName" -Method Get -ErrorAction SilentlyContinue
+    if ($existingRoute) {
+        # Update existing route
+        Invoke-RestMethod -Uri "$KONG_ADMIN_URL/routes/$routeName" -Method Patch -Body $body -ContentType "application/json"
+        Write-Host "  Updated WebSocket route: $routeName" -ForegroundColor Green
+    }
+} catch {
+    try {
+        # Create new route
+        Invoke-RestMethod -Uri "$KONG_ADMIN_URL/routes" -Method Post -Body $body -ContentType "application/json"
+        Write-Host "  Created WebSocket route: $routeName" -ForegroundColor Green
+    } catch {
+        Write-Host "  Failed to configure WebSocket route: $($_.Exception.Message)" -ForegroundColor Red
+    }
+}
 
 Write-Host "`nKong configuration complete!" -ForegroundColor Green
 Write-Host "Services configured:" -ForegroundColor Cyan

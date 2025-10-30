@@ -1,5 +1,6 @@
 const express = require('express');
 const http = require('http');
+const WebSocket = require('ws');
 const { Server } = require('socket.io');
 const amqp = require('amqplib');
 const cors = require('cors');
@@ -7,11 +8,17 @@ const path = require('path');
 
 const app = express();
 const server = http.createServer(app);
+
+// Setup WebSocket server
+const wss = new WebSocket.Server({ noServer: true });
+
+// Setup Socket.IO server
 const io = new Server(server, {
   cors: {
     origin: "*",
     methods: ["GET", "POST"]
-  }
+  },
+  path: '/socket.io'
 });
 
 // Serve static files
@@ -23,6 +30,45 @@ const PORT = process.env.PORT || 3100;
 
 // Store connected clients
 const clients = new Set();
+const wsClients = new Set();
+
+// Broadcast to all clients
+function broadcast(logMessage) {
+  // Broadcast to Socket.IO clients
+  io.emit('log_message', logMessage);
+  
+  // Broadcast to WebSocket clients
+  const messageStr = JSON.stringify(logMessage);
+  wsClients.forEach(client => {
+    if (client.readyState === WebSocket.OPEN) {
+      client.send(messageStr);
+    }
+  });
+}
+
+// WebSocket connection handling
+wss.on('connection', (ws) => {
+  console.log('WebSocket client connected');
+  wsClients.add(ws);
+
+  ws.on('close', () => {
+    console.log('WebSocket client disconnected');
+    wsClients.delete(ws);
+  });
+});
+
+// Handle upgrade requests
+server.on('upgrade', (request, socket, head) => {
+  const pathname = new URL(request.url, 'http://localhost').pathname;
+  
+  if (pathname === '/logs') {
+    wss.handleUpgrade(request, socket, head, (ws) => {
+      wss.emit('connection', ws, request);
+    });
+  } else {
+    socket.destroy();
+  }
+});
 
 // Connect to RabbitMQ and set up exchanges/queues
 async function setupRabbitMQ() {
@@ -53,7 +99,7 @@ async function setupRabbitMQ() {
           };
           
           // Broadcast to all connected clients
-          io.emit('log_message', logMessage);
+          broadcast(logMessage);
           channel.ack(msg);
         }
       });

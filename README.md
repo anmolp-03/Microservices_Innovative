@@ -3,7 +3,7 @@
 ## About The Project
 A modern, distributed restaurant management system built using microservices architecture. The system handles menu management, order processing, billing, reviews, and real-time event monitoring through multiple independent services.
 
-## Architecture Overview
+## Architecture Details
 The system consists of the following core microservices:
 
 - `menu-service` (Java/Spring Boot) — Menu management with MongoDB
@@ -13,35 +13,75 @@ The system consists of the following core microservices:
 - `event-streaming-service` (Node.js) - Real-time log monitoring and visualization
 - `ui` - Frontend interface for the system
 
-Each service has its own Dockerfile and (example) Kubernetes manifests in `k8s/`. Terraform under `terraform/` contains a starter template for GKE and Cloud SQL instances on GCP.
+## Detailed Architecture Overview
 
-Included extras:
-- `k8s/kong-deployment.yaml`: lightweight Kong (DB-less) demo for routing API traffic to services. For production, install Kong via Helm.
-- `cloudbuild.yaml`: Cloud Build template to build & push images and deploy k8s manifests.
+### System Architecture
+```
+┌─────────────────┐     ┌──────────────┐
+│   Kong Gateway  │◄────┤  UI Service  │
+└────────┬────────┘     └──────────────┘
+         │
+         ▼
+┌─────────────────────────────────────────┐
+│            Service Layer                 │
+│                                         │
+│  ┌──────┐  ┌───────┐  ┌─────┐  ┌─────┐ │
+│  │ Menu │  │ Order │  │Bill │  │Review│ │
+│  └──┬───┘  └───┬───┘  └──┬──┘  └──┬──┘ │
+└─────│──────────│─────────│─────────│────┘
+      │          │         │         │
+      ▼          ▼         ▼         ▼
+┌─────────────────────────────────────────┐
+│           Message Broker                 │
+│          (RabbitMQ Events)              │
+└─────────────────────────────────────────┘
+      │          │         │         │
+      ▼          ▼         ▼         ▼
+┌─────────────────────────────────────────┐
+│         Event Streaming Service          │
+└─────────────────────────────────────────┘
+      │          │         │         │
+      ▼          ▼         ▼         ▼
+┌─────────────────────────────────────────┐
+│             Databases                    │
+│   (MongoDB + Postgres for Reviews)       │
+└─────────────────────────────────────────┘
+```
 
-What I added in this session
-- k8s manifests for `bill-service` and `review-service`
-- example Kong deployment & declarative routes
-- extended Terraform `main.tf` to create Cloud SQL instances for order, bill and review
-- `cloudbuild.yaml` for CI/CD on GCP
+### CQRS Architecture (Menu Service Example)
+```
+┌───────────────┐
+│   Commands    │
+│ - CreateMenu  │
+│ - UpdateMenu  │──┐
+│ - DeleteMenu  │  │
+└───────────────┘  │     ┌────────────────┐
+                   ├────►│  Event Store    │
+┌───────────────┐  │     │   (MongoDB)    │
+│   Queries     │  │     └────────┬───────┘
+│ - GetMenu     │  │              │
+│ - ListMenus   │◄─┘              │
+└───────────────┘         ┌───────▼───────┐
+                         │  Projections   │
+                         │  (Read Model)  │
+                         └───────────────┘
+```
 
-Next steps (recommended)
-1. Replace `gcr.io/YOUR_PROJECT/...` image tags in `k8s/` manifests with your real Artifact Registry/GCR image paths or use image substitution in Cloud Build.
-2. Provision GKE and Cloud SQL using Terraform (fill variables and backend). Create DB users and network ACLs. Consider using private IPs for Cloud SQL.
-3. Secure secrets: create Kubernetes Secrets for DB credentials and refer to them in `envFrom` or `valueFrom` instead of inlining plaintext.
-4. Install Kong Ingress Controller via Helm for a production-like API gateway and use Ingress resources or KongIngress for route configuration.
-5. Add DevSecOps scanning in CI:
-   - Trivy for container images
-   - Bandit for Python
-   - OWASP Dependency-Check or mvn plugin for Java
-   - npm audit for Node
-   - gosec for Go
-6. Add GitHub Actions or Cloud Build triggers to run lint/tests, scans, build images and run deploys.
+### Change Data Capture (CDC) Flow
+```
+┌──────────────┐    ┌─────────────┐    ┌──────────────┐
+│   MongoDB    │    │  Change     │    │   Event      │
+│   OpLog      │───►│  Stream     │───►│   Bus        │
+└──────────────┘    │  Listener   │    │ (RabbitMQ)   │
+                    └─────────────┘    └──────┬───────┘
+                                             │
+                    ┌─────────────┐          │
+                    │  Service    │          │
+                    │  Consumers  │◄─────────┘
+                    └─────────────┘
+```
 
-How to try locally (minikube / kind)
-1. Build images locally and load into your cluster (or use Cloud Build to push to GCR). Replace image tags in `k8s/` manifests.
-2. kubectl apply -f k8s/
-3. (If using Kong DB-less) kubectl apply -n kong -f k8s/kong-deployment.yaml
+
 
 ## Technology Stack
 
@@ -67,30 +107,65 @@ How to try locally (minikube / kind)
 - **GitHub Actions**: CI/CD pipeline
 - **Cloud Platform**: GCP ready
 
-## Getting Started
+### Architectural Patterns
 
-### Prerequisites
-- Docker and Docker Compose
-- PowerShell (for Windows)
-- Git
-- Postman (for testing)
-### Installation & Setup
+#### CQRS & CDC by Service
 
-1. Clone the repository:
-```bash
-git clone https://github.com/anmolp-03/Microservices_Innovative.git
-cd devops
-```
+This project mixes CQRS and CDC patterns. Below is a per-service summary (what exists in the codebase today).
 
-2. Start all services using Docker Compose:
-```bash
-docker-compose up --build -d
-```
+- Menu Service (Java / Spring Boot)
+  - Implements CQRS in the codebase (separate command/query packages under `src/main/java/.../cqrs`).
+  - CDC: `MenuChangeStreamListener` watches the `menu_items` collection and publishes events to RabbitMQ.
+  - RabbitMQ exchange: `menu.events` with routing keys: `menu.created`, `menu.updated`, `menu.deleted`.
+  - Read model / projections: maintained separately (projections updated from events / change stream).
+  - Example event payload (menu.created):
+    ```json
+    { "id": "<objId>", "name": "Burger", "description": "...", "price": 7.99 }
+    ```
 
-3. Configure Kong API Gateway:
-```powershell
-./configure-kong.ps1
-```
+- Review Service (Go)
+  - CDC: The service starts a MongoDB change stream on the `reviews` collection and publishes `review.submitted` events.
+  - RabbitMQ exchange: `review.events` with routing key `review.submitted`.
+  - CQRS: the code reads from a `reviews_read` collection for query operations (`GetReview`, `GetReviewsByOrder`) — this is a read-side projection that can be maintained asynchronously (CQRS read model).
+  - Example event payload (review.submitted):
+    ```json
+    { "id": "<id>", "orderId": "<orderId>", "rating": 5, "comment": "Great!" }
+    ```
+
+- Order Service (Python)
+  - CDC: `order_service.py` starts a MongoDB change stream for `orders` and publishes domain events to RabbitMQ.
+  - RabbitMQ exchange: `order.events` with routing keys: `order.created`, `order.updated`.
+  - Typical usage: producers write to `orders` (command side), change stream publishes events for downstream consumers.
+  - Example event payload (order.created):
+    ```json
+    { "id": "<id>", "customerId": "c123", "items": [...], "status": "PENDING" }
+    ```
+
+- Bill Service (Node.js)
+  - Event-driven consumer + CDC producer:
+    - Consumes `order.created` events to generate bills (synchronous/asynchronous bill generation).
+    - Persists bills to `bills` collection and exposes a MongoDB change stream that publishes `bill.generated` events.
+  - RabbitMQ exchanges:
+    - Consumes from `order.events` / `order.created`
+    - Publishes to `bill.events` with routing key `bill.generated`.
+  - Read model: `bills` collection (used for queries). The service also publishes events for other consumers.
+  - Example event payload (bill.generated):
+    ```json
+    { "id": "<id>", "orderId": "<orderId>", "finalAmount": 12.34 }
+    ```
+
+- Event Streaming Service (Node.js)
+  - Infrastructure consumer: subscribes to `logs.*` (exchanges asserted in code: `logs.menu`, `logs.order`, `logs.bill`, `logs.review`) and broadcasts to WebSocket/Socket.IO clients.
+  - Purpose: central real-time view of domain events and system logs.
+
+### Patterns & How They Fit Together
+
+- Commands write to the primary datastore for a service (MongoDB). Many services use the database as the source-of-truth for commands.
+- Change streams (CDC) detect those writes and publish domain/integration events to RabbitMQ.
+- Consumers subscribe to RabbitMQ to react (e.g., Bill Service reacts to `order.created`).
+- Some services maintain a purpose-built read model (e.g., `reviews_read`), enabling CQRS-style queries.
+
+This layout lets services remain decoupled and scale read/write paths independently. The current codebase contains concrete CDC listeners for Menu, Order, Bill and Review; Menu and Review include explicit read-side projection logic consistent with CQRS.
 
 ### Service Endpoints (via Kong Gateway - http://localhost:18082)
 
@@ -138,6 +213,31 @@ docker-compose up --build -d
   - Management UI: 15672
 - MongoDB: 27017
 
+## Getting Started
+
+### Prerequisites
+- Docker and Docker Compose
+- PowerShell (for Windows)
+- Git
+- Postman (for testing)
+### Installation & Setup
+
+1. Clone the repository:
+```bash
+git clone https://github.com/anmolp-03/Microservices_Innovative.git
+cd devops
+```
+
+2. Start all services using Docker Compose:
+```bash
+docker-compose up --build -d
+```
+
+3. Configure Kong API Gateway:
+```powershell
+./configure-kong.ps1
+```
+
 ## Testing
 The repository includes various testing scripts:
 ```powershell
@@ -151,49 +251,3 @@ The repository includes various testing scripts:
 ./test/verify_menu_cdc.ps1
 ```
 
-## Deployment
-
-### Local Development
-Use Docker Compose for local development and testing:
-```bash
-docker-compose up --build -d
-```
-
-### Cloud Deployment (GCP)
-1. Configure Terraform variables in `terraform/terraform.tfvars`:
-   - Project ID
-   - Region/Zone
-   - Cluster configuration
-
-2. Initialize and apply Terraform:
-```bash
-cd terraform
-terraform init
-terraform apply
-```
-
-3. Configure GitHub Actions secrets for CI/CD:
-   - GCP_SA_KEY
-   - PROJECT_ID
-   - Other required credentials
-
-## Documentation
-- [Test Automation Guide](docs/test-automation.md)
-- [Menu CDC Verification Results](docs/menu-cdc-verification-results.md)
-- [Bill Service Root Cause Analysis](docs/bill-service-root-cause.md)
-
-## Contributing
-1. Fork the Project
-2. Create your Feature Branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your Changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the Branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request
-
-## License
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## Contact
-Project Link: [https://github.com/anmolp-03/Microservices_Innovative](https://github.com/anmolp-03/Microservices_Innovative)
-
----
-See individual service directories for detailed documentation and setup instructions.

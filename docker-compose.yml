@@ -74,11 +74,13 @@ services:
     depends_on:
       - mongodb
       - rabbitmq
+      - review-db
     environment:
       MONGODB_URI: "mongodb://mongodb:27017/restaurant?replicaSet=rs0"
       MONGODB_DATABASE: restaurant
       MONGODB_COLLECTION: reviews
       RABBITMQ_URL: "amqp://guest:guest@rabbitmq:5672"
+      REVIEW_DB_URL: "postgres://postgres:password@review-db:5432/review?sslmode=disable"
     ports:
       - "4000:4000"
     networks:
@@ -140,9 +142,28 @@ services:
       KONG_ADMIN_ACCESS_LOG: /dev/stdout
       # Listen on all interfaces for admin so host can call Admin API
       KONG_ADMIN_LISTEN: "0.0.0.0:8001"
+      # WebSocket support
+      KONG_NGINX_PROXY_WEBSOCKET_TIMEOUT: "36000"
+      KONG_NGINX_PROXY_WEBSOCKET_PINGS: "true"
+      KONG_NGINX_HTTP_UPSTREAM_KEEPALIVE: "60"
+      KONG_NGINX_HTTP_UPSTREAM_KEEPALIVE_REQUESTS: "100"
+      KONG_NGINX_HTTP_UPGRADE_TIMEOUT: "36000"
     ports:
       - "18082:8000" # proxy (host:container) - changed to avoid port conflicts
       - "18083:8001" # admin API
+    networks:
+      - restaurant-net
+    restart: unless-stopped
+
+  review-db:
+    image: postgres:14
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: review
+    volumes:
+      - ./review-service/db/init-review.sql:/docker-entrypoint-initdb.d/init-review.sql:ro
+      - review-db-data:/var/lib/postgresql/data
     networks:
       - restaurant-net
     restart: unless-stopped
@@ -168,3 +189,4 @@ volumes:
   mongodb-data:
   kong-db-data:
   rabbitmq-data:
+  review-db-data:
