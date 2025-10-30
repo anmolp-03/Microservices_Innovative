@@ -1,0 +1,41 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: init-bill-db
+spec:
+  template:
+    spec:
+      restartPolicy: OnFailure
+      containers:
+      - name: psql
+        image: postgres:14
+        env:
+        - name: PGPASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: service-db-creds
+              key: bill_db_password
+        command: ["/bin/sh","-c"]
+        args:
+        - |
+          psql -h ${BILL_DB_HOST:-bill-db-host} -U ${BILL_DB_USER:-postgres} -d ${BILL_DB_NAME:-bill} -f /scripts/init-bill.sql
+        volumeMounts:
+        - name: sql
+          mountPath: /scripts
+      volumes:
+      - name: sql
+        configMap:
+          name: bill-init-sql
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: bill-init-sql
+data:
+  init-bill.sql: |
+    CREATE TABLE IF NOT EXISTS bills (
+      id SERIAL PRIMARY KEY,
+      order_id INTEGER NOT NULL,
+      total DOUBLE PRECISION NOT NULL
+    );

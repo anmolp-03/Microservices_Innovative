@@ -1,0 +1,157 @@
+version: '3.8'
+
+services:
+  mongodb:
+    image: mongo:6
+    command: ["mongod", "--replSet", "rs0", "--bind_ip_all", "--noauth"]
+    volumes:
+      - mongodb-data:/data/db
+    networks:
+      - restaurant-net
+    restart: unless-stopped
+    healthcheck:
+      test: echo "try { rs.status() } catch (err) { rs.initiate({_id:'rs0',members:[{_id:0,host:'mongodb:27017'}]}) }" | mongosh
+      interval: 5s
+      timeout: 30s
+      retries: 30
+
+  menu:
+    build: ./menu-service
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    environment:
+      MONGODB_URI: "mongodb://mongodb:27017/restaurant?replicaSet=rs0"
+      MONGODB_DATABASE: restaurant
+      MONGODB_COLLECTION: menu
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: 5672
+      RABBITMQ_USER: guest
+      RABBITMQ_PASSWORD: guest
+    ports:
+      - "18080:8080"
+    networks:
+      - restaurant-net
+    restart: unless-stopped
+
+  order:
+    build: ./order-service
+    depends_on:
+      - mongodb
+      - menu
+      - rabbitmq
+      - kong
+    environment:
+      MONGODB_URI: "mongodb://mongodb:27017/restaurant?replicaSet=rs0"
+      MONGODB_DATABASE: restaurant
+      MONGODB_COLLECTION: orders
+      MENU_SERVICE_URL: "http://kong:8000"
+      RABBITMQ_URL: "amqp://guest:guest@rabbitmq:5672"
+    ports:
+      - "8000:8000"
+    networks:
+      - restaurant-net
+    restart: unless-stopped
+
+  bill:
+    build: ./bill-service
+    depends_on:
+      - mongodb
+      - rabbitmq
+    environment:
+      MONGODB_URI: "mongodb://mongodb:27017/restaurant?replicaSet=rs0"
+      MONGODB_DATABASE: restaurant
+      MONGODB_COLLECTION: bills
+      RABBITMQ_URL: "amqp://guest:guest@rabbitmq:5672"
+    ports:
+      - "3000:3000"
+    networks:
+      - restaurant-net
+    restart: unless-stopped
+
+  review:
+    build: ./review-service
+    depends_on:
+      - mongodb
+      - rabbitmq
+    environment:
+      MONGODB_URI: "mongodb://mongodb:27017/restaurant?replicaSet=rs0"
+      MONGODB_DATABASE: restaurant
+      MONGODB_COLLECTION: reviews
+      RABBITMQ_URL: "amqp://guest:guest@rabbitmq:5672"
+    ports:
+      - "4000:4000"
+    networks:
+      - restaurant-net
+    restart: unless-stopped
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    ports:
+      - "5672:5672"   # AMQP protocol port
+      - "15672:15672" # Management UI
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+    networks:
+      - restaurant-net
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+    restart: unless-stopped
+
+  ui-proxy:
+    image: python:3.12-slim
+    volumes:
+      - ./:/workspace:rw
+    working_dir: /workspace
+    environment:
+      UI_PORT: "8082"
+    command: ["python", "test/ui_proxy.py"]
+    ports:
+      # expose proxy on host port 18081 to avoid 8081/8082 conflicts
+      - "18081:8082"
+    networks:
+      - restaurant-net
+    restart: unless-stopped
+
+  # Kong API gateway and its backing Postgres DB
+  kong-db:
+    image: postgres:14
+    environment:
+      POSTGRES_USER: kong
+      POSTGRES_DB: kong
+      POSTGRES_PASSWORD: kong
+    volumes:
+      - kong-db-data:/var/lib/postgresql/data
+    networks:
+      - restaurant-net
+    restart: unless-stopped
+
+  kong:
+    image: kong:3.5.0
+    depends_on:
+      - kong-db
+    environment:
+      KONG_DATABASE: postgres
+      KONG_PG_HOST: kong-db
+      KONG_PG_USER: kong
+      KONG_PG_PASSWORD: kong
+      KONG_PROXY_ACCESS_LOG: /dev/stdout
+      KONG_ADMIN_ACCESS_LOG: /dev/stdout
+      # Listen on all interfaces for admin so host can call Admin API
+      KONG_ADMIN_LISTEN: "0.0.0.0:8001"
+    ports:
+      - "18082:8000" # proxy (host:container) - changed to avoid port conflicts
+      - "18083:8001" # admin API
+    networks:
+      - restaurant-net
+    restart: unless-stopped
+
+networks:
+  restaurant-net:
+    driver: bridge
+
+volumes:
+  mongodb-data:
+  kong-db-data:
+  rabbitmq-data:

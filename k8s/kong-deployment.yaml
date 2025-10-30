@@ -1,0 +1,94 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: kong
+
+---
+# NOTE: This is a lightweight, demo Kong proxy deployment intended for development and testing only.
+# For production use, install the official Kong Ingress Controller via Helm and follow Kong docs.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kong-proxy
+  namespace: kong
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: kong-proxy
+  template:
+    metadata:
+      labels:
+        app: kong-proxy
+    spec:
+      containers:
+      - name: kong
+        image: kong:3.6
+        env:
+        - name: KONG_DATABASE
+          value: "off"
+        - name: KONG_PROXY_ACCESS_LOG
+          value: "/dev/stdout"
+        - name: KONG_ADMIN_ACCESS_LOG
+          value: "/dev/stdout"
+        - name: KONG_PROXY_ERROR_LOG
+          value: "/dev/stderr"
+        - name: KONG_ADMIN_ERROR_LOG
+          value: "/dev/stderr"
+        - name: KONG_ADMIN_LISTEN
+          value: "0.0.0.0:8001"
+        ports:
+        - containerPort: 8000 # proxy
+        - containerPort: 8443 # proxy SSL
+        - containerPort: 8001 # admin
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: kong-proxy
+  namespace: kong
+spec:
+  type: LoadBalancer
+  selector:
+    app: kong-proxy
+  ports:
+  - name: proxy
+    port: 80
+    targetPort: 8000
+  - name: admin
+    port: 8001
+    targetPort: 8001
+
+---
+# Example of a declarative Kong configuration that registers routes for our services.
+# This ConfigMap can be applied to the cluster and Kong will pick it up when running in DB-less mode.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: kong-declarative
+  namespace: kong
+data:
+  kong.yml: |
+    _format_version: "1.1"
+    services:
+    - name: menu
+      url: http://menu-service.default.svc.cluster.local:8080
+      routes:
+      - name: menu-route
+        paths: ["/menu"]
+    - name: order
+      url: http://order-service.default.svc.cluster.local:8000
+      routes:
+      - name: order-route
+        paths: ["/orders"]
+    - name: bill
+      url: http://bill-service.default.svc.cluster.local:3000
+      routes:
+      - name: bill-route
+        paths: ["/bills"]
+    - name: review
+      url: http://review-service.default.svc.cluster.local:4000
+      routes:
+      - name: review-route
+        paths: ["/reviews"]

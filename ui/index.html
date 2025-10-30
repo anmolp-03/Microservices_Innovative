@@ -1,0 +1,63 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Restaurant UI</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <header>
+      <h1>Restaurant</h1>
+      <nav>
+        <button data-view="menu" class="active">Menu</button>
+        <button data-view="order">Place Order</button>
+        <button data-view="history">Order History</button>
+        <button data-view="bills">Bills</button>
+        <button data-view="reviews">Reviews</button>
+      </nav>
+    </header>
+
+    <main>
+      <section id="view-menu" class="view">
+        <h2>Menu</h2>
+        <div id="menu" class="box">Loading menu…</div>
+      </section>
+
+      <section id="view-order" class="view" style="display:none">
+        <h2>Place Order</h2>
+        <label>Customer: <input id="customer" placeholder="Your name" /></label>
+        <label>Items: <select id="menuSelect"></select> Qty: <input id="qty" type="number" value="1" min="1" style="width:60px"/></label>
+        <button id="orderBtn">Place Order</button>
+        <pre id="orderOut" class="box"></pre>
+      </section>
+
+      <section id="view-history" class="view" style="display:none">
+        <h2>Order History</h2>
+        <div id="history" class="box">No orders yet.</div>
+      </section>
+
+      <section id="view-bills" class="view" style="display:none">
+        <h2>Bills</h2>
+        <label>Order ID: <input id="billOrderId" /></label>
+        <button id="billBtn">Compute Bill</button>
+        <div id="bills" class="box">No bills yet.</div>
+      </section>
+
+      <section id="view-reviews" class="view" style="display:none">
+        <h2>Reviews</h2>
+        <label>Name: <input id="revCustomer" /></label>
+        <label>Rating: <input id="revRating" type="number" min="1" max="5" value="5" style="width:60px"/></label>
+        <label>Comment: <input id="revComment" style="width:300px"/></label>
+        <button id="revBtn">Post Review</button>
+        <div id="reviews" class="box">No reviews yet.</div>
+      </section>
+    </main>
+
+    <footer>
+      <small>Local dev UI — proxied to backend services.</small>
+    </footer>
+
+    <script src="/app.js"></script>
+  </body>
+</html>

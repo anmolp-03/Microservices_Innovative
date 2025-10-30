@@ -1,0 +1,170 @@
+{
+  "info": {
+    "name": "Restaurant Billing Pipeline",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "description": "Validate menu, order, and bill services through Kong."
+  },
+  "variable": [
+    {
+      "key": "gateway",
+      "value": "http://localhost:18082"
+    },
+    {
+      "key": "menuId",
+      "value": ""
+    },
+    {
+      "key": "orderId",
+      "value": ""
+    },
+    {
+      "key": "billId",
+      "value": ""
+    }
+  ],
+  "item": [
+    {
+      "name": "Menu - Create Item",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"Postman Supreme\",\n  \"description\": \"End-to-end test item\",\n  \"price\": 17.50\n}"
+        },
+        "url": {
+          "raw": "{{gateway}}/menu",
+          "host": [
+            "{{gateway}}"
+          ],
+          "path": [
+            "menu"
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "let data = pm.response.json();",
+              "pm.collectionVariables.set('menuId', data.id);",
+              "pm.expect(data.id, 'menu id present').to.be.a('string');"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Menu - List Items",
+      "request": {
+        "method": "GET",
+        "url": {
+          "raw": "{{gateway}}/menu",
+          "host": [
+            "{{gateway}}"
+          ],
+          "path": [
+            "menu"
+          ]
+        }
+      }
+    },
+    {
+      "name": "Order - Create Order",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"customerId\": \"postman-user\",\n  \"items\": [\n    {\n      \"menuId\": \"{{menuId}}\",\n      \"quantity\": 2\n    }\n  ]\n}"
+        },
+        "url": {
+          "raw": "{{gateway}}/orders",
+          "host": [
+            "{{gateway}}"
+          ],
+          "path": [
+            "orders"
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "let data = pm.response.json();",
+              "pm.collectionVariables.set('orderId', data.order_id);",
+              "pm.expect(data.order_id, 'order id present').to.be.a('string');"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Bill - Get by Order",
+      "request": {
+        "method": "GET",
+        "url": {
+          "raw": "{{gateway}}/bills/order/{{orderId}}",
+          "host": [
+            "{{gateway}}"
+          ],
+          "path": [
+            "bills",
+            "order",
+            "{{orderId}}"
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "if (pm.response.code === 404) {",
+              "  pm.test('Bill not ready yet', function() {",
+              "    pm.expect.fail('Bill not generated; retry after delay');",
+              "  });",
+              "} else {",
+              "  let data = pm.response.json();",
+              "  pm.collectionVariables.set('billId', data._id);",
+              "  pm.expect(data.orderId).to.eql(pm.collectionVariables.get('orderId'));",
+              "}"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Bill - Get by Id",
+      "request": {
+        "method": "GET",
+        "url": {
+          "raw": "{{gateway}}/bills/{{billId}}",
+          "host": [
+            "{{gateway}}"
+          ],
+          "path": [
+            "bills",
+            "{{billId}}"
+          ]
+        }
+      }
+    }
+  ]
+}

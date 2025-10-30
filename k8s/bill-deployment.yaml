@@ -1,0 +1,39 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: bill-deployment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: bill
+  template:
+    metadata:
+      labels:
+        app: bill
+    spec:
+      containers:
+      - name: bill
+        image: gcr.io/YOUR_PROJECT/bill-service:latest
+        ports:
+        - containerPort: 3000
+        env:
+        - name: BILL_DB_URL
+          value: "postgresql://postgres:password@bill-db-host:5432/bill"
+        - name: ORDER_SERVICE_URL
+          value: "http://order-service:8000"
+        - name: MENU_SERVICE_URL
+          value: "http://menu-service:8080"
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: bill-service
+spec:
+  selector:
+    app: bill
+  ports:
+  - port: 3000
+    targetPort: 3000
+    protocol: TCP

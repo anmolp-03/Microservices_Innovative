@@ -1,0 +1,35 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: menu-deployment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: menu
+  template:
+    metadata:
+      labels:
+        app: menu
+    spec:
+      containers:
+      - name: menu
+        image: gcr.io/YOUR_PROJECT/menu-service:latest
+        ports:
+        - containerPort: 8080
+        env:
+        - name: MENU_DB_HOST
+          value: "menu-db-host"
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: menu-service
+spec:
+  selector:
+    app: menu
+  ports:
+  - port: 8080
+    targetPort: 8080
+    protocol: TCP

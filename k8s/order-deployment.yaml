@@ -1,0 +1,35 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: order-deployment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: order
+  template:
+    metadata:
+      labels:
+        app: order
+    spec:
+      containers:
+      - name: order
+        image: gcr.io/YOUR_PROJECT/order-service:latest
+        ports:
+        - containerPort: 8000
+        env:
+        - name: ORDER_DB_URL
+          value: "postgresql://postgres:password@order-db-host:5432/order"
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: order-service
+spec:
+  selector:
+    app: order
+  ports:
+  - port: 8000
+    targetPort: 8000
+    protocol: TCP

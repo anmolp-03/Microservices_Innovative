@@ -1,0 +1,42 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: init-menu-db
+spec:
+  template:
+    spec:
+      restartPolicy: OnFailure
+      containers:
+      - name: psql
+        image: postgres:14
+        env:
+        - name: PGPASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: service-db-creds
+              key: menu_db_password
+        command: ["/bin/sh","-c"]
+        args:
+        - |
+          psql -h ${MENU_DB_HOST:-menu-db-host} -U ${MENU_DB_USER:-postgres} -d ${MENU_DB_NAME:-menu} -f /scripts/init-menu.sql
+        volumeMounts:
+        - name: sql
+          mountPath: /scripts
+      volumes:
+      - name: sql
+        configMap:
+          name: menu-init-sql
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: menu-init-sql
+data:
+  init-menu.sql: |
+    -- SQL moved from repo; keep short here if needed
+    CREATE TABLE IF NOT EXISTS menu_item (
+      id SERIAL PRIMARY KEY,
+      name TEXT NOT NULL,
+      price DOUBLE PRECISION NOT NULL
+    );

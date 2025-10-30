@@ -1,0 +1,16 @@
+/.idea
+/target
+/build
+/node_modules
+/venv
+*.class
+*.jar
+*.war
+*.iml
+*.log
+*.env
+/.terraform
+/.terraform.lock.hcl
+terraform.tfstate
+terraform.tfstate.backup
+*.tfvars

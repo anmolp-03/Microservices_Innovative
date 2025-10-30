@@ -1,0 +1,46 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: init-order-db
+spec:
+  template:
+    spec:
+      restartPolicy: OnFailure
+      containers:
+      - name: psql
+        image: postgres:14
+        env:
+        - name: PGPASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: service-db-creds
+              key: order_db_password
+        command: ["/bin/sh","-c"]
+        args:
+        - |
+          psql -h ${ORDER_DB_HOST:-order-db-host} -U ${ORDER_DB_USER:-postgres} -d ${ORDER_DB_NAME:-order} -f /scripts/init-order.sql
+        volumeMounts:
+        - name: sql
+          mountPath: /scripts
+      volumes:
+      - name: sql
+        configMap:
+          name: order-init-sql
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: order-init-sql
+data:
+  init-order.sql: |
+    CREATE TABLE IF NOT EXISTS orders (
+      id SERIAL PRIMARY KEY,
+      customer TEXT NOT NULL
+    );
+    CREATE TABLE IF NOT EXISTS order_items (
+      id SERIAL PRIMARY KEY,
+      order_id INTEGER REFERENCES orders(id) ON DELETE CASCADE,
+      menu_id INTEGER NOT NULL,
+      qty INTEGER NOT NULL
+    );

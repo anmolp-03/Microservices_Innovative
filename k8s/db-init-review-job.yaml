@@ -1,0 +1,42 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: init-review-db
+spec:
+  template:
+    spec:
+      restartPolicy: OnFailure
+      containers:
+      - name: psql
+        image: postgres:14
+        env:
+        - name: PGPASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: service-db-creds
+              key: review_db_password
+        command: ["/bin/sh","-c"]
+        args:
+        - |
+          psql -h ${REVIEW_DB_HOST:-review-db-host} -U ${REVIEW_DB_USER:-postgres} -d ${REVIEW_DB_NAME:-review} -f /scripts/init-review.sql
+        volumeMounts:
+        - name: sql
+          mountPath: /scripts
+      volumes:
+      - name: sql
+        configMap:
+          name: review-init-sql
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: review-init-sql
+data:
+  init-review.sql: |
+    CREATE TABLE IF NOT EXISTS reviews (
+      id SERIAL PRIMARY KEY,
+      customer TEXT NOT NULL,
+      rating INTEGER NOT NULL,
+      comment TEXT
+    );

@@ -1,0 +1,35 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: review-deployment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: review
+  template:
+    metadata:
+      labels:
+        app: review
+    spec:
+      containers:
+      - name: review
+        image: gcr.io/YOUR_PROJECT/review-service:latest
+        ports:
+        - containerPort: 4000
+        env:
+        - name: REVIEW_DB_URL
+          value: "postgresql://postgres:password@review-db-host:5432/review?sslmode=disable"
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: review-service
+spec:
+  selector:
+    app: review
+  ports:
+  - port: 4000
+    targetPort: 4000
+    protocol: TCP
