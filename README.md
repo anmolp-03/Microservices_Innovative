@@ -13,31 +13,6 @@ The system consists of the following core microservices:
 - `event-streaming-service` (Node.js) - Real-time log monitoring and visualization
 - `ui` - Frontend interface for the system
 
-Each service has its own Dockerfile and (example) Kubernetes manifests in `k8s/`. Terraform under `terraform/` contains a starter template for GKE and Cloud SQL instances on GCP.
-
-Included extras:
-- `k8s/kong-deployment.yaml`: lightweight Kong (DB-less) demo for routing API traffic to services. For production, install Kong via Helm.
-- `cloudbuild.yaml`: Cloud Build template to build & push images and deploy k8s manifests.
-
-What I added in this session
-- k8s manifests for `bill-service` and `review-service`
-- example Kong deployment & declarative routes
-- extended Terraform `main.tf` to create Cloud SQL instances for order, bill and review
-- `cloudbuild.yaml` for CI/CD on GCP
-
-Next steps (recommended)
-1. Replace `gcr.io/YOUR_PROJECT/...` image tags in `k8s/` manifests with your real Artifact Registry/GCR image paths or use image substitution in Cloud Build.
-2. Provision GKE and Cloud SQL using Terraform (fill variables and backend). Create DB users and network ACLs. Consider using private IPs for Cloud SQL.
-3. Secure secrets: create Kubernetes Secrets for DB credentials and refer to them in `envFrom` or `valueFrom` instead of inlining plaintext.
-4. Install Kong Ingress Controller via Helm for a production-like API gateway and use Ingress resources or KongIngress for route configuration.
-5. Add DevSecOps scanning in CI:
-   - Trivy for container images
-   - Bandit for Python
-   - OWASP Dependency-Check or mvn plugin for Java
-   - npm audit for Node
-   - gosec for Go
-6. Add GitHub Actions or Cloud Build triggers to run lint/tests, scans, build images and run deploys.
-
 How to try locally (minikube / kind)
 1. Build images locally and load into your cluster (or use Cloud Build to push to GCR). Replace image tags in `k8s/` manifests.
 2. kubectl apply -f k8s/
@@ -53,11 +28,6 @@ How to try locally (minikube / kind)
 - **MongoDB**: Primary database with replica set
 - **RabbitMQ**: Message broker for service communication
 - **WebSocket**: Real-time event streaming
-
-### Frontend
-- HTML5, CSS3, JavaScript
-- Real-time log visualization
-- Responsive design
 
 ### DevOps & Infrastructure
 - **Docker**: Containerization
@@ -189,11 +159,7 @@ terraform apply
 4. Push to the Branch (`git push origin feature/AmazingFeature`)
 5. Open a Pull Request
 
-## License
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## Contact
-Project Link: [https://github.com/anmolp-03/Microservices_Innovative](https://github.com/anmolp-03/Microservices_Innovative)
-
----
-See individual service directories for detailed documentation and setup instructions.
+## Contributors
+Anmol Panjwani
+Mahek Mehta
+Shivani Padhiyar
