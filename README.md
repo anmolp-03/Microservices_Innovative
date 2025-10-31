@@ -6,11 +6,11 @@ A modern, distributed restaurant management system built using microservices arc
 ## Architecture Details
 The system consists of the following core microservices:
 
-- `menu-service` (Java/Spring Boot) — Menu management with MongoDB
-- `order-service` (Python) — Order processing with MongoDB
-- `bill-service` (Node.js) — Bill calculation and payment processing with MongoDB
-- `review-service` (Go) — Customer review management with MongoDB
-- `event-streaming-service` (Node.js) - Real-time log monitoring and visualization
+- `menu-service` (Java/Spring Boot) - Menu management with MongoDB
+- `order-service` (Python) - Order processing with MongoDB
+- `bill-service` (Node.js) - Bill calculation and payment processing with MongoDB
+- `review-service` (Go) - Customer review management with MongoDB
+- `event-streaming-service` (Next.js) - Real-time log monitoring and visualization
 - `ui` - Frontend interface for the system
 
 ## Detailed Architecture Overview
